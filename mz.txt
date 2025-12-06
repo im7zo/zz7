@@ -1,0 +1,6 @@
+telethon
+requests
+aiohttp 
+gtts
+pytz
+googletrans 
