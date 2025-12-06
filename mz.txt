@@ -1,5 +1,0 @@
-telethon
-requests
-aiohttp 
-gtts
-googletrans  
