@@ -142,16 +142,15 @@ async def forward_group_reply(event):
                 print(f"⌔┊ صار خطأ غير متوقع: {e}")
 
 
-import os
 from telethon import events
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.functions.photos import GetUserPhotosRequest
 from config import client
 
-@client.on(events.NewMessage(outgoing=True, pattern=r"^\.ايدي$"))
+@client.on(events.NewMessage(outgoing=True, pattern=r"^\.ا(يدي)?$"))
 async def user_info(event):
     if not event.out:
-        return  # تنفيذ فقط على رسائلي الصادرة
+        return
 
     try:
         await event.delete()
@@ -169,14 +168,21 @@ async def user_info(event):
         reply_to_id = None
 
     full = await client(GetFullUserRequest(user.id))
-    photos = await client(GetUserPhotosRequest(user.id, offset=0, max_id=0, limit=1))
+
+    # عدد الصور بالكامل باستخدام len()
+    photos_data = await client(GetUserPhotosRequest(
+        user_id=user.id,
+        offset=0,
+        max_id=0,
+        limit=0
+    ))
+    photos_count = len(photos_data.photos)
 
     first_name = user.first_name or "لا يوجد"
     username = f"@{user.username}" if user.username else "لا يوجد"
     user_id = user.id
     rank = "مـالك الحساب" if user.is_self else "مستخدم"
     bio = getattr(full.full_user, 'about', None) or "لا يوجد"
-    photos_count = len(photos.photos)
 
     caption = f"""•⎚• مـعلومـات المسـتخـدم مـن بـوت 𝐙
 
@@ -189,19 +195,20 @@ async def user_info(event):
 ✦ البايـو  ⤎ {bio}
 ٴ⋆─┄─┄─┄─ 𝐙 ─┄─┄─┄─⋆"""
 
-    profile_photo_path = None
-    if photos_count > 0:
-        try:
-            profile_photo_path = await client.download_profile_photo(user.id, file=f"profile_{user.id}.jpg")
-        except:
-            profile_photo_path = None
-
     try:
-        if profile_photo_path and os.path.exists(profile_photo_path):
-            await client.send_file(chat_id, file=profile_photo_path, caption=caption, reply_to=reply_to_id)
-            os.remove(profile_photo_path)
-        else:
-            await client.send_message(chat_id, caption, reply_to=reply_to_id)
+        if photos_count > 0:
+            last_photo = await client.get_profile_photos(user.id, limit=1)
+            if last_photo.total > 0:
+                await client.send_file(
+                    chat_id,
+                    last_photo[0],
+                    caption=caption,
+                    reply_to=reply_to_id
+                )
+                return
+
+        await client.send_message(chat_id, caption, reply_to=reply_to_id)
+
     except Exception as e:
         print("فشل إرسال الكليشة:", e)
 
