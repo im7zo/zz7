@@ -3,4 +3,6 @@ requests
 aiohttp 
 gtts
 pytz
-googletrans 
+googletrans
+ffmpeg
+yt_dlp
