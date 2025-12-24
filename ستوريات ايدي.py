@@ -1,12 +1,11 @@
 import os
 from telethon import events
-from telethon.tl.functions.stories import GetPeerStoriesRequest
+from telethon.tl.functions.stories import GetAllStoriesRequest
 from config import client
 
 td = "tmp"
 os.makedirs(td, exist_ok=True)
 
-# تحديد امتداد الملف
 def ge(st):
     d = getattr(st.media, 'document', None)
     if d:
@@ -21,23 +20,35 @@ def ge(st):
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^\.ستوري (.+)'))
-async def get_stories(event):
+async def stories_cmd(event):
     await event.delete()
-
     target = event.pattern_match.group(1)
 
     try:
         entity = await client.get_entity(target)
 
-        res = await client(GetPeerStoriesRequest(peer=entity))
+        res = await client(GetAllStoriesRequest(
+            next=False,
+            hidden=False,
+            state=0
+        ))
 
-        if not res.stories or not res.stories.stories:
-            await client.send_message(event.chat_id, "❗ لا توجد ستوريات حالية لهذا الحساب")
+        user_stories = []
+        for peer, stories in res.peer_stories.items():
+            if peer == entity:
+                user_stories = stories.stories
+                break
+
+        if not user_stories:
+            await client.send_message(event.chat_id, "❗ لا توجد ستوريات حالية")
             return
 
-        msg = await client.send_message(event.chat_id, f"⌯ تم العثور على {len(res.stories.stories)} ستوري، جاري الإرسال...")
+        info = await client.send_message(
+            event.chat_id,
+            f"⌯ تم العثور على {len(user_stories)} ستوري، جاري الإرسال..."
+        )
 
-        for st in res.stories.stories:
+        for st in user_stories:
             media = getattr(st.media, 'document', None) or getattr(st.media, 'photo', None)
             if not media:
                 continue
@@ -49,8 +60,8 @@ async def get_stories(event):
             await client.send_file(event.chat_id, path)
             os.remove(path)
 
-        await msg.delete()
+        await info.delete()
 
     except Exception as e:
-        await client.send_message(event.chat_id, "❌ حدث خطأ أثناء جلب الستوريات")
-        print("Story Error:", e)
+        await client.send_message(event.chat_id, "❌ فشل جلب الستوريات")
+        print("STORY ERROR:", e)
