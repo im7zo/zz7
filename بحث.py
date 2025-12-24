@@ -11,12 +11,13 @@ async def search_youtube(event):
     # تعديل رسالة المستخدم لتظهر التحميل
     msg = await event.edit("╮ جـارِ التحميل ▬▭ . . .🎧♥️╰")
 
-    # إعدادات yt-dlp لتحويل الصوت إلى mp3
+    # إعدادات yt-dlp لتحويل الصوت إلى mp3 مع دعم cookies
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'downloads/%(title)s.%(ext)s',
         'quiet': True,
         'no_warnings': True,
+        'cookies': 'cookies.txt',  # << هنا يقرأ ملف الكوكيز
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
