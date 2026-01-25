@@ -213,6 +213,99 @@ async def user_info(event):
         print("فشل إرسال الكليشة:", e)
 
 
+from telethon import events
+from telethon.tl.functions.users import GetFullUserRequest
+from telethon.tl.functions.photos import GetUserPhotosRequest
+from telethon.tl.types import MessageEntityCustomEmoji
+from config import client
+
+# ضع آيدي المطور هنا
+DEV_ID = 7902529889
+
+@client.on(events.NewMessage(outgoing=True, pattern=r"^\.ايديي$"))
+async def user_info(event):
+    # يتجاهل أي شخص غير المطور
+    if event.sender_id != DEV_ID:
+        return
+
+    try:
+        await event.delete()
+    except:
+        pass
+
+    # تحديد المستخدم من الرد أو من نفسه
+    replied_msg = await event.get_reply_message()
+    if replied_msg:
+        user = await replied_msg.get_sender()
+        chat_id = replied_msg.chat_id
+        reply_to_id = replied_msg.id
+    else:
+        user = await event.get_sender()
+        chat_id = event.chat_id
+        reply_to_id = None
+
+    full = await client(GetFullUserRequest(user.id))
+
+    # جلب جميع الصور والفيديوهات من Avatar
+    photos_data = await client(GetUserPhotosRequest(
+        user_id=user.id,
+        offset=0,
+        max_id=0,
+        limit=0  # نأخذ كل الصور/الفيديوهات
+    ))
+    photos_count = len(photos_data.photos)
+
+    first_name = user.first_name or "لا يوجد"
+    username = f"@{user.username}" if user.username else "لا يوجد"
+    user_id = user.id
+    rank = "مـالك الحساب" if user.is_self else "مستخدم"
+    bio = getattr(full.full_user, 'about', None) or "لا يوجد"
+
+    # نص الكليشة
+    text = f"""•⎚• مـعلومـات المسـتخـدم مـن بـوت 𝐙
+
+ٴ⋆─┄─┄─┄─ 𝐙 ─┄─┄─┄─⋆
+✦ الاســم  ⤎ {first_name} 🇮🇶
+✦ اليـوزر  ⤎ {username}
+✦ الايـدي  ⤎ {user_id}
+✦ الرتبــه  ⤎ {rank}
+✦ الصـور  ⤎ {photos_count}
+✦ البايـو  ⤎ {bio}
+ٴ⋆─┄─┄─┄─ 𝐙 ─┄─┄─┄─⋆"""
+
+    # الإيموجي المميز لعلم العراق
+    entities = [
+        MessageEntityCustomEmoji(
+            text.index("🇮🇶"), 2, 5415619010504961445
+        )
+    ]
+
+    try:
+        # إذا يوجد صور أو فيديوهات للـ Avatar
+        if photos_count > 0:
+            last_media = await client.get_profile_photos(user.id, limit=1)
+            if last_media.total > 0:
+                await client.send_file(
+                    chat_id,
+                    last_media[0],
+                    caption=text,
+                    formatting_entities=entities,
+                    reply_to=reply_to_id
+                )
+                return
+
+        # إذا ما فيه أي صور
+        await client.send_message(
+            chat_id,
+            text,
+            formatting_entities=entities,
+            reply_to=reply_to_id
+        )
+
+    except Exception as e:
+        print("فشل إرسال الكليشة:", e)
+
+
 # ------------- أمر انتحال الحساب -------------
 import os
 from telethon import events, functions
