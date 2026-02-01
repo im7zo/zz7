@@ -96,22 +96,34 @@ async def performance(event):
     except Exception:
         text = raw_text
 
-    # ── تصحيح offsets للإيموجي المميز ──
-    fixed_entities = []
-    for e in data["entities"]:
-        offset = e["offset"]
+    # ── إضافة Zero-Width Space بين الإيموجيات المكررة لتظهر كلها مميزة ──
+    def fix_emoji_spacing(txt, entities):
+        new_txt = list(txt)
+        new_entities = []
+        added = 0
 
-        for pos, diff in shifts:
-            if pos < offset:
-                offset += diff
+        for e in entities:
+            offset = e["offset"] + added
+            length = e["length"]
 
-        fixed_entities.append(
-            MessageEntityCustomEmoji(
-                offset=offset,
-                length=e["length"],
-                document_id=e["document_id"]
+            # إذا الإيموجي مكرر، نضيف \u200b بين كل واحد
+            emoji_text = txt[offset:offset+length]
+            if len(emoji_text) > 1:
+                spaced = "\u200b".join(emoji_text)
+                new_txt[offset:offset+length] = list(spaced)
+                length = len(spaced)
+                added += length - (e["length"])
+
+            new_entities.append(
+                MessageEntityCustomEmoji(
+                    offset=offset,
+                    length=length,
+                    document_id=e["document_id"]
+                )
             )
-        )
+        return "".join(new_txt), new_entities
+
+    text, fixed_entities = fix_emoji_spacing(text, data["entities"])
 
     # ── إرسال الكليشة مع الإيموجي المميز ──
     await client.send_message(
